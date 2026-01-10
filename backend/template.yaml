@@ -1,0 +1,37 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Spivot Backend - FastAPI on AWS Lambda
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: python3.11
+    Environment:
+      Variables:
+        DATABASE_URL: postgresql://postgres:reddy%4012345hi@db.dfsedfndnrowvevyqhar.supabase.co:5432/postgres
+        GOOGLE_API_KEY: AIzaSyBZT0zh139gFxI22JrwzCz24CNsjm9YDIw
+        CORS_ORIGINS: https://spivot.vercel.app
+
+Resources:
+  SpivotFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: lambda_handler.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+        Root:
+          Type: HttpApi
+          Properties:
+            Path: /
+            Method: ANY
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway URL
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/"
