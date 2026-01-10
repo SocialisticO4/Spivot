@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     debug: bool = True
     
     # Database
-    database_url: str = "sqlite+aiosqlite:///./spivot_demo.db"
+    database_url: str = ""
     supabase_url: str = ""
     supabase_key: str = ""
     

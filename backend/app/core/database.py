@@ -13,9 +13,15 @@ class Base(DeclarativeBase):
 
 settings = get_settings()
 
+# Determine proper database URL
+db_url = settings.database_url
+if not db_url or db_url == "":
+    # Use SQLite for demo/development
+    db_url = "sqlite+aiosqlite:///./spivot_demo.db"
+
 # Create async engine
 engine = create_async_engine(
-    settings.database_url,
+    db_url,
     echo=settings.debug,
     future=True
 )
