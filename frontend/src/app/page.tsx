@@ -6,61 +6,21 @@ import { StatusCard } from "@/components/dashboard/StatusCard";
 import { ForecastChart } from "@/components/dashboard/ForecastChart";
 import { ExpenseChart } from "@/components/dashboard/ExpenseChart";
 import { ActionFeed } from "@/components/dashboard/ActionFeed";
-import { RefreshCw, AlertTriangle, Sparkles } from "lucide-react";
-import type { DashboardMetrics, AgentLog, ExpenseCategory, ForecastItem } from "@/lib/types";
+import { RefreshCw, AlertTriangle, Sparkles, LogOut, Loader2 } from "lucide-react";
+import type { DashboardMetrics, AgentLog, ExpenseCategory } from "@/lib/types";
+import { getDashboardMetrics, getAgentLogs } from "@/lib/data";
+import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
-// Mock data for demo (will connect to API)
-const mockMetrics: DashboardMetrics = {
-  cash_runway_days: 15,
-  spivot_score: 580,
-  pending_orders: 5,
-  forecast_accuracy: 0.87,
-  burn_rate: 45000,
-  total_inventory_value: 2850000,
+// Default metrics when loading
+const defaultMetrics: DashboardMetrics = {
+  cash_runway_days: 0,
+  spivot_score: 0,
+  pending_orders: 0,
+  forecast_accuracy: 0,
+  burn_rate: 0,
+  total_inventory_value: 0,
 };
-
-const mockLogs: AgentLog[] = [
-  {
-    id: 1,
-    timestamp: new Date(Date.now() - 300000).toISOString(),
-    agent_name: "Treasurer",
-    action: "Cash runway critical",
-    result: "Only 15 days of runway left!",
-    severity: "critical",
-  },
-  {
-    id: 2,
-    timestamp: new Date(Date.now() - 600000).toISOString(),
-    agent_name: "Quartermaster",
-    action: "Stock alert triggered",
-    result: "Steel Sheets below reorder point",
-    severity: "critical",
-  },
-  {
-    id: 3,
-    timestamp: new Date(Date.now() - 1200000).toISOString(),
-    agent_name: "Prophet",
-    action: "Demand forecast updated",
-    result: "High demand spike predicted (↑35%)",
-    severity: "warning",
-  },
-  {
-    id: 4,
-    timestamp: new Date(Date.now() - 3600000).toISOString(),
-    agent_name: "Visual Eye",
-    action: "Processed invoice from Steel Suppliers Inc.",
-    result: "Extracted 12 line items",
-    severity: "info",
-  },
-  {
-    id: 5,
-    timestamp: new Date(Date.now() - 7200000).toISOString(),
-    agent_name: "Underwriter",
-    action: "Spivot Score updated",
-    result: "Score dropped to 580 (Medium Risk)",
-    severity: "warning",
-  },
-];
 
 const mockExpenses: ExpenseCategory[] = [
   { category: "Raw Materials", amount: 450000 },
@@ -73,35 +33,75 @@ const mockExpenses: ExpenseCategory[] = [
   { category: "Insurance", amount: 35000 },
 ];
 
-const mockForecast = Array.from({ length: 30 }, (_, i) => ({
-  date: new Date(Date.now() + i * 86400000).toISOString().split("T")[0],
-  forecast: Math.round(85000 + Math.random() * 30000 + i * 1000),
-  actual: i < 7 ? Math.round(80000 + Math.random() * 25000 + i * 800) : undefined,
-}));
-
 export default function Dashboard() {
-  const [metrics, setMetrics] = useState<DashboardMetrics>(mockMetrics);
-  const [logs, setLogs] = useState<AgentLog[]>(mockLogs);
-  const [expenses, setExpenses] = useState<ExpenseCategory[]>(mockExpenses);
-  const [forecast, setForecast] = useState(mockForecast);
-  const [loading, setLoading] = useState(false);
-  const [demoResetting, setDemoResetting] = useState(false);
+  const [metrics, setMetrics] = useState<DashboardMetrics>(defaultMetrics);
+  const [logs, setLogs] = useState<AgentLog[]>([]);
+  const [expenses] = useState<ExpenseCategory[]>(mockExpenses);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const router = useRouter();
 
-  const handleResetDemo = async () => {
-    setDemoResetting(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    
-    // Update with crisis scenario data
-    setMetrics({
-      ...metrics,
-      cash_runway_days: 12,
-      pending_orders: 7,
-      spivot_score: 520,
-    });
-    
-    setDemoResetting(false);
+  // Fetch user and data on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      // Get user
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+
+      // Fetch dashboard data
+      try {
+        const [metricsData, logsData] = await Promise.all([
+          getDashboardMetrics(),
+          getAgentLogs(10)
+        ]);
+        setMetrics(metricsData);
+        setLogs(logsData);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        // Use fallback data if fetch fails
+        setMetrics({
+          cash_runway_days: 15,
+          spivot_score: 580,
+          pending_orders: 5,
+          forecast_accuracy: 0.87,
+          burn_rate: 45000,
+          total_inventory_value: 2850000,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
   };
+
+  const handleRefresh = async () => {
+    setLoading(true);
+    try {
+      const [metricsData, logsData] = await Promise.all([
+        getDashboardMetrics(),
+        getAgentLogs(10)
+      ]);
+      setMetrics(metricsData);
+      setLogs(logsData);
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const mockForecast = Array.from({ length: 30 }, (_, i) => ({
+    date: new Date(Date.now() + i * 86400000).toISOString().split("T")[0],
+    forecast: Math.round(85000 + Math.random() * 30000 + i * 1000),
+    actual: i < 7 ? Math.round(80000 + Math.random() * 25000 + i * 800) : undefined,
+  }));
 
   const getAlertLevel = (runway: number): "normal" | "warning" | "critical" => {
     if (runway < 20) return "critical";
@@ -115,6 +115,17 @@ export default function Dashboard() {
     return "normal";
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-purple-500 mx-auto mb-4" />
+          <p className="text-gray-500">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -122,30 +133,32 @@ export default function Dashboard() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-500 mt-1">
-            Spivot Auto Parts Pvt. Ltd. - Overview
+            {user?.email || "Spivot Auto Parts Pvt. Ltd."} - Overview
           </p>
         </div>
-        <Button
-          onClick={handleResetDemo}
-          disabled={demoResetting}
-          className="flex items-center gap-2"
-        >
-          {demoResetting ? (
-            <>
-              <RefreshCw className="h-4 w-4 animate-spin" />
-              Resetting...
-            </>
-          ) : (
-            <>
-              <AlertTriangle className="h-4 w-4" />
-              Reset Demo (Crisis Mode)
-            </>
-          )}
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={handleRefresh}
+            disabled={loading}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button
+            onClick={handleLogout}
+            variant="ghost"
+            className="flex items-center gap-2 text-gray-500"
+          >
+            <LogOut className="h-4 w-4" />
+            Logout
+          </Button>
+        </div>
       </div>
 
       {/* Crisis Alert Banner */}
-      {metrics.cash_runway_days < 20 && (
+      {metrics.cash_runway_days < 20 && metrics.cash_runway_days > 0 && (
         <div className="bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-2xl p-4 flex items-center gap-4 shadow-lg">
           <div className="p-2 bg-white/20 rounded-xl">
             <AlertTriangle className="h-6 w-6" />
@@ -196,17 +209,26 @@ export default function Dashboard() {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <ForecastChart data={forecast} />
+        <ForecastChart data={mockForecast} />
         <ExpenseChart data={expenses} />
       </div>
 
       {/* Agent Activity */}
-      <ActionFeed logs={logs} />
+      <ActionFeed logs={logs.length > 0 ? logs : [
+        {
+          id: 1,
+          timestamp: new Date().toISOString(),
+          agent_name: "System",
+          action: "Waiting for data",
+          result: "Add transactions and inventory to see agent activity",
+          severity: "info",
+        }
+      ]} />
 
       {/* Footer Info */}
       <div className="text-center text-sm text-gray-400 py-4 flex items-center justify-center gap-2">
         <Sparkles className="h-4 w-4" />
-        Powered by 5 AI Agents • Updated in real-time
+        Powered by 5 AI Agents • Data from Supabase
       </div>
     </div>
   );
