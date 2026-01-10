@@ -13,15 +13,29 @@ class Base(DeclarativeBase):
 
 settings = get_settings()
 
-# Determine proper database URL
-db_url = settings.database_url
-if not db_url or db_url == "":
-    # Use SQLite for demo/development
-    db_url = "sqlite+aiosqlite:///./spivot_demo.db"
 
-# Create async engine
+def get_database_url() -> str:
+    """Get properly formatted async database URL."""
+    db_url = settings.database_url
+    
+    # If no URL, use SQLite
+    if not db_url or db_url.strip() == "":
+        return "sqlite+aiosqlite:///./spivot_demo.db"
+    
+    # Convert postgresql:// to postgresql+asyncpg://
+    if db_url.startswith("postgresql://"):
+        db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    
+    # Also handle postgres:// (older format)
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+    
+    return db_url
+
+
+# Create async engine with proper URL
 engine = create_async_engine(
-    db_url,
+    get_database_url(),
     echo=settings.debug,
     future=True
 )
