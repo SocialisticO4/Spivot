@@ -124,4 +124,4 @@ class AgentLog(Base):
     severity: Mapped[AgentSeverity] = mapped_column(
         SQLEnum(AgentSeverity), default=AgentSeverity.INFO
     )
-    metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    extra_data: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)

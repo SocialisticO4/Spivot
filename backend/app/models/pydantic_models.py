@@ -121,7 +121,7 @@ class AgentLogResponse(BaseModel):
     action: str
     result: Optional[str]
     severity: AgentSeverity
-    metadata: Optional[dict]
+    extra_data: Optional[dict]
 
     class Config:
         from_attributes = True
