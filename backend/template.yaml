@@ -7,11 +7,6 @@ Globals:
     Timeout: 30
     MemorySize: 512
     Runtime: python3.11
-    Environment:
-      Variables:
-        DATABASE_URL: postgresql://postgres:reddy%4012345hi@db.dfsedfndnrowvevyqhar.supabase.co:5432/postgres
-        GOOGLE_API_KEY: AIzaSyBZT0zh139gFxI22JrwzCz24CNsjm9YDIw
-        CORS_ORIGINS: https://spivot.vercel.app
 
 Resources:
   SpivotFunction:
@@ -19,6 +14,12 @@ Resources:
     Properties:
       CodeUri: .
       Handler: lambda_handler.handler
+      Environment:
+        Variables:
+          # Set these in AWS Console or with --parameter-overrides
+          DATABASE_URL: !Ref DatabaseUrl
+          GOOGLE_API_KEY: !Ref GoogleApiKey
+          CORS_ORIGINS: !Ref CorsOrigins
       Events:
         Api:
           Type: HttpApi
@@ -30,6 +31,20 @@ Resources:
           Properties:
             Path: /
             Method: ANY
+
+Parameters:
+  DatabaseUrl:
+    Type: String
+    Description: PostgreSQL connection URL
+    NoEcho: true
+  GoogleApiKey:
+    Type: String
+    Description: Google Gemini API Key
+    NoEcho: true
+  CorsOrigins:
+    Type: String
+    Description: Allowed CORS origins
+    Default: "*"
 
 Outputs:
   ApiUrl:
