@@ -1,0 +1,1 @@
+"""Spivot Backend App."""

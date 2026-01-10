@@ -43,7 +43,7 @@ jobs:
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           working-directory: frontend
 
-  # Backend - Deploy to Cloud Run
+  # Backend - Deploy to AWS Lambda
   backend:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
@@ -53,32 +53,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          python-version: '3.12'
+          cache: 'pip'
       
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+      - name: Setup AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
         with:
-          project_id: ${{ env.PROJECT_ID }}
-      
-      - name: Configure Docker for GCR
-        run: gcloud auth configure-docker
-      
-      - name: Build Docker image
-        run: docker build -t gcr.io/$PROJECT_ID/$SERVICE_NAME .
-      
-      - name: Push to Container Registry
-        run: docker push gcr.io/$PROJECT_ID/$SERVICE_NAME
-      
-      - name: Deploy to Cloud Run
+          use-installer: true
+          
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+          
+      - name: Build with SAM
+        run: sam build --use-container
+        
+      - name: Deploy to AWS Lambda
         run: |
-          gcloud run deploy $SERVICE_NAME \
-            --image gcr.io/$PROJECT_ID/$SERVICE_NAME \
-            --region $REGION \
-            --platform managed \
-            --allow-unauthenticated \
-            --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
-            --set-env-vars "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" \
-            --set-env-vars "CORS_ORIGINS=${{ secrets.FRONTEND_URL }}"
+          sam deploy --stack-name spivot-backend \
+            --region ap-south-1 \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --resolve-s3 \
+            --parameter-overrides \
+              DatabaseUrl="${{ secrets.DATABASE_URL }}" \
+              GoogleApiKey="${{ secrets.GOOGLE_API_KEY }}" \
+              CorsOrigins="*"
