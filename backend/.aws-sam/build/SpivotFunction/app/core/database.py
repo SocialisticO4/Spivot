@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from sqlalchemy.orm import DeclarativeBase
 from app.core.config import get_settings
 import os
+import ssl
 
 settings = get_settings()
 
@@ -23,14 +24,23 @@ if not DATABASE_URL:
     print("⚠️ No DATABASE_URL found. Using SQLite fallback.")
     DATABASE_URL = "sqlite+aiosqlite:///./spivot_demo.db"
 
+# Configure connection args based on database type
+if "sqlite" in DATABASE_URL:
+    connect_args = {"check_same_thread": False}
+else:
+    # For PostgreSQL (Supabase) - SSL is required
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    connect_args = {"ssl": ssl_context}
+
 # Create Engine
 engine = create_async_engine(
     DATABASE_URL,
     echo=False,
     future=True,
     pool_pre_ping=True,
-    # SQLite-specific args
-    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
+    connect_args=connect_args
 )
 
 # Session Factory
@@ -54,13 +64,14 @@ async def get_db():
 
 async def init_db():
     """Initialize database tables."""
-    print(f"🔧 Initializing database... (URL: {DATABASE_URL[:20]}... )")
+    print(f"🔧 Initializing database... (URL: {DATABASE_URL[:30]}... )")
     try:
+        # Import all models so SQLAlchemy knows about them
+        from app.models.schemas import User, Inventory, Transaction, Document, AgentLog
+        
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
             print("✅ Tables initialized.")
     except Exception as e:
         print(f"❌ Database init failed: {e}")
-        # In Lambda, we might not want to crash if DB is unreachable, 
-        # but for initial setup it's good to know.
         raise e

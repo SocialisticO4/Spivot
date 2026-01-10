@@ -6,11 +6,6 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION: asia-south1
-  SERVICE_NAME: spivot-backend
-
 jobs:
   # Frontend - Deploy to Vercel
   frontend:
