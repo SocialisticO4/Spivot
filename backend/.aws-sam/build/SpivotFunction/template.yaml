@@ -20,6 +20,13 @@ Resources:
           DATABASE_URL: !Ref DatabaseUrl
           GOOGLE_API_KEY: !Ref GoogleApiKey
           CORS_ORIGINS: !Ref CorsOrigins
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: "*"
       Events:
         Api:
           Type: HttpApi

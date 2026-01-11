@@ -138,7 +138,7 @@ export default function DocumentsPage() {
           <div>
             <p className="font-medium" style={{ color: 'var(--pending-amber)' }}>Backend Required</p>
             <p className="small-text">
-              Document OCR processing requires the AWS Lambda backend with Google Gemini.
+              Document OCR uses Claude 3 Haiku on AWS Bedrock.
             </p>
           </div>
         </CardContent>
@@ -166,7 +166,7 @@ export default function DocumentsPage() {
                     <p className="small-text">{doc.type} • {doc.date}</p>
                   </div>
                 </div>
-                <StatusBadge status={doc.status === "completed" ? "paid" : doc.status === "failed" ? "failed" : "processing"} />
+                <StatusBadge status={doc.status === "completed" ? "completed" : doc.status === "processing" ? "processing" : "failed"} />
               </div>
             ))}
           </CardContent>

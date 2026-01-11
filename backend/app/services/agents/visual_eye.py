@@ -1,125 +1,155 @@
 """
 The Visual Eye Agent - OCR & Document Ingestion
-Uses Google Gemini 2.0 Flash for document processing.
+Using Claude 3 Haiku on AWS Bedrock (Mumbai region)
 """
 import json
 import base64
+import os
+import boto3
 from typing import Optional
 from datetime import datetime
-try:
-    from google import genai
-    from google.genai import types
-except ImportError:
-    genai = None
-    types = None
-    print("⚠️ Google GenAI library not found. Visual Eye agent will be disabled.")
-from app.core.config import get_settings
+
 from app.models.pydantic_models import ExtractedDocumentData
 
-
-EXTRACTION_PROMPT = """Extract the following from this document and return strictly structured JSON:
+# -------------------------------------------------------------------------
+# PROMPT
+# -------------------------------------------------------------------------
+EXTRACTION_PROMPT = """Extract the following fields from this document and return ONLY valid JSON:
 
 {
     "document_type": "Invoice" | "Purchase Order" | "Bank Statement" | "Receipt" | "Other",
     "vendor_name": "string or null",
     "date": "YYYY-MM-DD or null",
-    "line_items": [
-        {"description": "string", "quantity": number, "unit_price": number, "total": number}
-    ],
     "total_amount": number or null,
-    "tax": number or null
+    "tax": number or null,
+    "line_items": [{"description": "string", "quantity": number, "unit_price": number, "total": number}]
 }
 
-Only return valid JSON, no additional text or explanation."""
+Return ONLY the JSON object. No markdown, no explanation."""
 
 
 class VisualEyeAgent:
-    """OCR and document ingestion agent using Google Gemini."""
+    """
+    Document OCR Agent using Claude 3 Haiku on AWS Bedrock.
+    Available in Mumbai (ap-south-1) for low latency.
+    """
     
     def __init__(self):
-        settings = get_settings()
-        self.client = genai.Client(api_key=settings.google_api_key)
-        self.model = "gemini-2.0-flash"
-    
+        # Claude 3 Haiku - fast and cheap
+        self.model_id = "anthropic.claude-3-haiku-20240307-v1:0"
+        self.region = "ap-south-1"  # Mumbai - same as Lambda
+        self.client = None
+        
+        self._init_bedrock()
+
+    def _init_bedrock(self):
+        """Initialize AWS Bedrock Runtime."""
+        try:
+            self.client = boto3.client(
+                "bedrock-runtime", 
+                region_name=self.region
+            )
+            print(f"✅ Visual Eye: Claude 3 Haiku ready ({self.region})")
+        except Exception as e:
+            print(f"❌ Visual Eye: Bedrock init failed: {e}")
+
     async def process_document(
         self, 
         file_content: bytes, 
         file_name: str,
         mime_type: str = "application/pdf"
     ) -> ExtractedDocumentData:
-        """
-        Process a document (PDF or Image) and extract structured data.
+        """Process document using Claude 3 Haiku."""
         
-        Args:
-            file_content: Raw bytes of the file
-            file_name: Original filename
-            mime_type: MIME type of the file
-            
-        Returns:
-            ExtractedDocumentData with parsed information
-        """
-        try:
-            # Encode file content to base64
-            file_base64 = base64.standard_b64encode(file_content).decode("utf-8")
-            
-            # Create the content parts
-            contents = [
-                types.Content(
-                    role="user",
-                    parts=[
-                        types.Part.from_bytes(
-                            data=file_content,
-                            mime_type=mime_type
-                        ),
-                        types.Part.from_text(EXTRACTION_PROMPT)
-                    ]
-                )
-            ]
-            
-            # Generate response
-            response = self.client.models.generate_content(
-                model=self.model,
-                contents=contents,
-                config=types.GenerateContentConfig(
-                    temperature=0.1,  # Low temperature for structured extraction
-                    max_output_tokens=2048
-                )
-            )
-            
-            # Parse JSON response
-            response_text = response.text.strip()
-            
-            # Clean up response if wrapped in markdown code blocks
-            if response_text.startswith("```json"):
-                response_text = response_text[7:]
-            if response_text.startswith("```"):
-                response_text = response_text[3:]
-            if response_text.endswith("```"):
-                response_text = response_text[:-3]
-            
-            extracted_data = json.loads(response_text.strip())
-            
-            return ExtractedDocumentData(
-                document_type=extracted_data.get("document_type", "Other"),
-                vendor_name=extracted_data.get("vendor_name"),
-                date=extracted_data.get("date"),
-                line_items=extracted_data.get("line_items", []),
-                total_amount=extracted_data.get("total_amount"),
-                tax=extracted_data.get("tax"),
-                raw_text=response_text
-            )
-            
-        except json.JSONDecodeError as e:
+        if not self.client:
             return ExtractedDocumentData(
                 document_type="Other",
-                raw_text=f"JSON parsing error: {str(e)}"
+                raw_text="Error: Bedrock client not initialized"
             )
+        
+        try:
+            # Encode image to base64
+            image_b64 = base64.standard_b64encode(file_content).decode("utf-8")
+            
+            # Map mime type
+            media_type = mime_type
+            if mime_type == "application/pdf":
+                media_type = "application/pdf"
+            
+            # Claude 3 message format
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": media_type,
+                                "data": image_b64
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": EXTRACTION_PROMPT
+                        }
+                    ]
+                }
+            ]
+            
+            # Call Claude 3 Haiku
+            response = self.client.invoke_model(
+                modelId=self.model_id,
+                body=json.dumps({
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 2048,
+                    "temperature": 0.1,
+                    "messages": messages
+                })
+            )
+            
+            # Parse response
+            result = json.loads(response["body"].read())
+            text = result["content"][0]["text"]
+            
+            return self._parse_json_response(text)
+            
         except Exception as e:
+            print(f"❌ Claude processing error: {e}")
             return ExtractedDocumentData(
                 document_type="Other",
                 raw_text=f"Processing error: {str(e)}"
             )
-    
+
+    def _parse_json_response(self, text: str) -> ExtractedDocumentData:
+        """Parse JSON from Claude response."""
+        text = text.strip()
+        
+        # Remove markdown if present
+        if text.startswith("```json"):
+            text = text[7:]
+        elif text.startswith("```"):
+            text = text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+            
+        try:
+            data = json.loads(text.strip())
+            return ExtractedDocumentData(
+                document_type=data.get("document_type", "Other"),
+                vendor_name=data.get("vendor_name"),
+                date=data.get("date"),
+                line_items=data.get("line_items", []),
+                total_amount=data.get("total_amount"),
+                tax=data.get("tax"),
+                raw_text=text
+            )
+        except json.JSONDecodeError as e:
+            return ExtractedDocumentData(
+                document_type="Other",
+                raw_text=f"JSON Error: {e} | Raw: {text[:300]}"
+            )
+
     def get_mime_type(self, file_name: str) -> str:
         """Determine MIME type from filename."""
         lower_name = file_name.lower()
@@ -135,5 +165,5 @@ class VisualEyeAgent:
             return "application/octet-stream"
 
 
-# Singleton instance
+# Singleton
 visual_eye = VisualEyeAgent()

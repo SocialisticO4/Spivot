@@ -13,6 +13,14 @@ settings = get_settings()
 # Get Database URL
 DATABASE_URL = settings.database_url or os.getenv("DATABASE_URL", "")
 
+# Remove sslmode parameter (we'll handle SSL manually for asyncpg)
+if "sslmode=" in DATABASE_URL:
+    # Remove sslmode=require or similar from URL
+    import re
+    DATABASE_URL = re.sub(r'[?&]sslmode=[^&]*', '', DATABASE_URL)
+    # Clean up any trailing ? or &&
+    DATABASE_URL = DATABASE_URL.rstrip('?').replace('&&', '&').rstrip('&')
+
 # Fix Postgres URL for asyncpg
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)

@@ -3,7 +3,7 @@
 import { CheckCircle, Clock, AlertCircle, XCircle, FileText, Loader2 } from "lucide-react";
 
 interface StatusBadgeProps {
-  status: "paid" | "pending" | "overdue" | "draft" | "processing" | "failed";
+  status: "paid" | "pending" | "overdue" | "draft" | "processing" | "failed" | "completed";
   size?: "sm" | "md" | "lg";
 }
 
@@ -37,6 +37,11 @@ const statusConfig = {
     label: "Failed",
     icon: XCircle,
     className: "badge-danger",
+  },
+  completed: {
+    label: "Completed",
+    icon: CheckCircle,
+    className: "badge-success",
   },
 };
 
