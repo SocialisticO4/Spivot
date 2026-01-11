@@ -110,6 +110,7 @@ class ExtractedDocumentData(BaseModel):
     line_items: list[dict] = []
     total_amount: Optional[float] = None
     tax: Optional[float] = None
+    full_text: Optional[str] = None
     raw_text: Optional[str] = None
 
 

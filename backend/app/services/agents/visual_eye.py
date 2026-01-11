@@ -22,7 +22,8 @@ EXTRACTION_PROMPT = """Extract the following fields from this document and retur
     "date": "YYYY-MM-DD or null",
     "total_amount": number or null,
     "tax": number or null,
-    "line_items": [{"description": "string", "quantity": number, "unit_price": number, "total": number}]
+    "line_items": [{"description": "string", "quantity": number, "unit_price": number, "total": number}],
+    "full_text": "string (transcribe all visible text on the document verbatim)"
 }
 
 Return ONLY the JSON object. No markdown, no explanation."""
@@ -142,6 +143,7 @@ class VisualEyeAgent:
                 line_items=data.get("line_items", []),
                 total_amount=data.get("total_amount"),
                 tax=data.get("tax"),
+                full_text=data.get("full_text"),
                 raw_text=text
             )
         except json.JSONDecodeError as e:
