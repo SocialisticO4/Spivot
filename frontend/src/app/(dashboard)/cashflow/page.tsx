@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, MetricCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowUpRight, ArrowDownRight, Plus, Loader2, X, Wallet } from "lucide-react";
+import { AmountDisplay, CompactAmount } from "@/components/ui/AmountDisplay";
+import { TrendingUp, TrendingDown, Plus, Loader2, X, Wallet, Clock } from "lucide-react";
 import { getTransactions, createTransaction, getCashflowAnalysis } from "@/lib/data";
 
 interface Transaction {
@@ -76,23 +77,32 @@ export default function CashflowPage() {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: 'var(--text-tertiary)' }} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="px-4 py-6 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Cashflow</h1>
-          <p className="text-gray-500 mt-1">Managed by Treasurer Agent</p>
+          <h1 className="heading-1">Cashflow</h1>
+          <p className="small-text" style={{ color: 'var(--text-tertiary)' }}>Managed by Treasurer Agent</p>
         </div>
-        <Button onClick={() => setShowAddModal(true)} className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
+        <Button onClick={() => setShowAddModal(true)}>
+          <Plus className="h-5 w-5" />
           Add Transaction
         </Button>
       </div>
@@ -100,12 +110,12 @@ export default function CashflowPage() {
       {/* Empty State */}
       {transactions.length === 0 ? (
         <Card>
-          <CardContent className="p-12 text-center">
-            <Wallet className="h-16 w-16 mx-auto text-gray-300 mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">No transactions yet</h2>
-            <p className="text-gray-500 mb-6">Add your first transaction to start tracking cashflow.</p>
+          <CardContent className="empty-state">
+            <Wallet className="empty-state-icon" />
+            <h2 className="empty-state-title">No transactions yet</h2>
+            <p className="empty-state-description">Add your first transaction to start tracking cashflow.</p>
             <Button onClick={() => setShowAddModal(true)}>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-5 w-5" />
               Add First Transaction
             </Button>
           </CardContent>
@@ -113,162 +123,202 @@ export default function CashflowPage() {
       ) : (
         <>
           {/* Key Metrics */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="bg-gray-900 text-white">
-              <CardContent className="p-6">
-                <p className="text-gray-400 text-sm font-medium">Current Balance</p>
-                <p className="text-3xl font-bold mt-2">
-                  ₹{(cashflow?.current_balance || 0).toLocaleString()}
-                </p>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <MetricCard variant="accent">
+              <p className="text-sm opacity-80 mb-1">Current Balance</p>
+              <p className="text-3xl font-bold text-white">
+                {cashflow ? <CompactAmount amount={cashflow.current_balance} className="!text-white" /> : "₹0"}
+              </p>
+            </MetricCard>
 
-            <Card className={cashflow && cashflow.cash_runway_days < 20 ? "bg-red-50 border-red-200" : ""}>
-              <CardContent className="p-6">
-                <p className="text-gray-500 text-sm font-medium">Cash Runway</p>
-                <p className={`text-3xl font-bold mt-2 ${cashflow && cashflow.cash_runway_days < 20 ? "text-red-600" : "text-gray-900"}`}>
-                  {cashflow?.cash_runway_days || 0} days
-                </p>
-              </CardContent>
-            </Card>
+            <MetricCard variant={cashflow && cashflow.cash_runway_days < 20 ? "danger" : "default"}>
+              <p className="small-text mb-1">Cash Runway</p>
+              <p className="text-3xl font-bold">{cashflow?.cash_runway_days || 0}</p>
+              <p className="small-text">days</p>
+            </MetricCard>
 
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-gray-500 text-sm font-medium">Monthly Inflow</p>
-                <p className="text-3xl font-bold mt-2 text-emerald-600">
-                  ₹{((cashflow?.monthly_inflow || 0) / 100000).toFixed(1)}L
-                </p>
-              </CardContent>
-            </Card>
+            <MetricCard>
+              <p className="small-text mb-1">Monthly Inflow</p>
+              <AmountDisplay amount={cashflow?.monthly_inflow || 0} size="md" />
+            </MetricCard>
 
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-gray-500 text-sm font-medium">Monthly Outflow</p>
-                <p className="text-3xl font-bold mt-2 text-red-600">
-                  ₹{((cashflow?.monthly_outflow || 0) / 100000).toFixed(1)}L
-                </p>
-              </CardContent>
-            </Card>
+            <MetricCard>
+              <p className="small-text mb-1">Monthly Outflow</p>
+              <AmountDisplay amount={-(cashflow?.monthly_outflow || 0)} size="md" />
+            </MetricCard>
           </div>
 
-          {/* Recent Transactions */}
-          <Card>
+          {/* Transactions Table (Desktop) */}
+          <Card className="hide-mobile">
             <CardHeader>
               <CardTitle>Recent Transactions</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {transactions.slice(0, 10).map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="flex items-center justify-between p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`p-2 rounded-lg ${tx.type === "credit" ? "bg-emerald-100" : "bg-red-100"}`}>
-                        {tx.type === "credit" ? (
-                          <ArrowUpRight className="h-5 w-5 text-emerald-600" />
-                        ) : (
-                          <ArrowDownRight className="h-5 w-5 text-red-600" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{tx.description || tx.category}</p>
-                        <p className="text-sm text-gray-500">{new Date(tx.date).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                    <span className={`font-semibold ${tx.type === "credit" ? "text-emerald-600" : "text-red-600"}`}>
-                      {tx.type === "credit" ? "+" : "-"}₹{Math.abs(tx.amount).toLocaleString()}
-                    </span>
-                  </div>
-                ))}
-              </div>
+            <CardContent className="p-0">
+              <table className="ledger-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th className="text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transactions.slice(0, 15).map((tx) => (
+                    <tr key={tx.id}>
+                      <td style={{ color: 'var(--text-tertiary)' }}>{formatDate(tx.date)}</td>
+                      <td>
+                        <div>
+                          <p className="font-medium">{tx.description || tx.category}</p>
+                          <p className="small-text">{tx.category}</p>
+                        </div>
+                      </td>
+                      <td className="amount-cell">
+                        <AmountDisplay 
+                          amount={tx.type === "credit" ? tx.amount : -tx.amount} 
+                          size="sm"
+                          showSign
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </CardContent>
           </Card>
+
+          {/* Transactions Cards (Mobile) */}
+          <div className="hide-desktop">
+            <h2 className="heading-2 mb-4">Recent Transactions</h2>
+            <div className="space-y-3">
+              {transactions.slice(0, 10).map((tx) => (
+                <Card key={tx.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="p-2 rounded-lg"
+                          style={{ 
+                            background: tx.type === "credit" ? 'var(--profit-light)' : 'var(--loss-light)'
+                          }}
+                        >
+                          {tx.type === "credit" ? (
+                            <TrendingUp className="w-5 h-5" style={{ color: 'var(--profit-green)' }} />
+                          ) : (
+                            <TrendingDown className="w-5 h-5" style={{ color: 'var(--loss-red)' }} />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                            {tx.description || tx.category}
+                          </p>
+                          <p className="small-text">{formatDate(tx.date)}</p>
+                        </div>
+                      </div>
+                      <AmountDisplay 
+                        amount={tx.type === "credit" ? tx.amount : -tx.amount} 
+                        size="sm"
+                        showSign
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
         </>
       )}
 
       {/* Add Transaction Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold">Add Transaction</h2>
-              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="heading-2">Add Transaction</h2>
+              <button onClick={() => setShowAddModal(false)} className="p-2 rounded-lg hover:bg-[var(--bg-accent-subtle)]">
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <form onSubmit={handleAddTransaction} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setNewTx({ ...newTx, type: "credit" })}
-                    className={`flex-1 py-2 rounded-xl font-medium ${
-                      newTx.type === "credit" ? "bg-emerald-100 text-emerald-700 border-2 border-emerald-500" : "bg-gray-100 text-gray-700"
-                    }`}
-                  >
-                    Income
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewTx({ ...newTx, type: "debit" })}
-                    className={`flex-1 py-2 rounded-xl font-medium ${
-                      newTx.type === "debit" ? "bg-red-100 text-red-700 border-2 border-red-500" : "bg-gray-100 text-gray-700"
-                    }`}
-                  >
-                    Expense
-                  </button>
+            <form onSubmit={handleAddTransaction}>
+              <div className="modal-body space-y-4">
+                <div>
+                  <label className="label-text block mb-2">Type</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setNewTx({ ...newTx, type: "credit" })}
+                      className={`p-4 rounded-[var(--radius-lg)] border-2 flex flex-col items-center gap-2 transition-all ${
+                        newTx.type === "credit" 
+                          ? "border-[var(--profit-green)] bg-[var(--profit-light)]" 
+                          : "border-[var(--border-default)] hover:border-[var(--border-strong)]"
+                      }`}
+                    >
+                      <TrendingUp className="w-6 h-6" style={{ color: 'var(--profit-green)' }} />
+                      <span className="font-medium">Income</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewTx({ ...newTx, type: "debit" })}
+                      className={`p-4 rounded-[var(--radius-lg)] border-2 flex flex-col items-center gap-2 transition-all ${
+                        newTx.type === "debit" 
+                          ? "border-[var(--loss-red)] bg-[var(--loss-light)]" 
+                          : "border-[var(--border-default)] hover:border-[var(--border-strong)]"
+                      }`}
+                    >
+                      <TrendingDown className="w-6 h-6" style={{ color: 'var(--loss-red)' }} />
+                      <span className="font-medium">Expense</span>
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="label-text block mb-1">Amount (₹)</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={newTx.amount}
+                    onChange={(e) => setNewTx({ ...newTx, amount: Number(e.target.value) })}
+                    className="input"
+                    placeholder="Enter amount"
+                  />
+                </div>
+                <div>
+                  <label className="label-text block mb-1">Category</label>
+                  <input
+                    type="text"
+                    required
+                    value={newTx.category}
+                    onChange={(e) => setNewTx({ ...newTx, category: e.target.value })}
+                    className="input"
+                    placeholder={newTx.type === "credit" ? "e.g., Product Sales" : "e.g., Raw Materials"}
+                  />
+                </div>
+                <div>
+                  <label className="label-text block mb-1">Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={newTx.date}
+                    onChange={(e) => setNewTx({ ...newTx, date: e.target.value })}
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="label-text block mb-1">Description (Optional)</label>
+                  <input
+                    type="text"
+                    value={newTx.description}
+                    onChange={(e) => setNewTx({ ...newTx, description: e.target.value })}
+                    className="input"
+                    placeholder="e.g., Invoice #4521"
+                  />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₹)</label>
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  value={newTx.amount}
-                  onChange={(e) => setNewTx({ ...newTx, amount: Number(e.target.value) })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                <input
-                  type="text"
-                  required
-                  value={newTx.category}
-                  onChange={(e) => setNewTx({ ...newTx, category: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder={newTx.type === "credit" ? "e.g., Product Sales" : "e.g., Raw Materials"}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                <input
-                  type="date"
-                  required
-                  value={newTx.date}
-                  onChange={(e) => setNewTx({ ...newTx, date: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
-                <input
-                  type="text"
-                  value={newTx.description}
-                  onChange={(e) => setNewTx({ ...newTx, description: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., Invoice #4521"
-                />
-              </div>
-              <div className="flex gap-3 pt-4">
-                <Button type="button" variant="outline" onClick={() => setShowAddModal(false)} className="flex-1">
+              <div className="modal-footer">
+                <Button type="button" variant="secondary" onClick={() => setShowAddModal(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={saving} className="flex-1">
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add Transaction"}
+                <Button type="submit" loading={saving}>
+                  Add Transaction
                 </Button>
               </div>
             </form>

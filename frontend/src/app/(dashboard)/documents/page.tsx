@@ -3,7 +3,8 @@
 import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, CheckCircle, Clock, XCircle, Loader2, AlertTriangle } from "lucide-react";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Upload, FileText, Loader2, AlertTriangle, Camera, Image as ImageIcon } from "lucide-react";
 import { uploadDocument } from "@/lib/data";
 
 interface Document {
@@ -21,13 +22,6 @@ export default function DocumentsPage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const statusIcons = {
-    completed: <CheckCircle className="h-5 w-5 text-emerald-500" />,
-    processing: <Clock className="h-5 w-5 text-amber-500 animate-pulse" />,
-    pending: <Clock className="h-5 w-5 text-gray-400" />,
-    failed: <XCircle className="h-5 w-5 text-red-500" />,
-  };
-
   const handleFileSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     
@@ -35,7 +29,6 @@ export default function DocumentsPage() {
     setUploading(true);
     setUploadError(null);
 
-    // Add to local state immediately
     const tempDoc: Document = {
       id: Date.now(),
       name: file.name,
@@ -47,14 +40,12 @@ export default function DocumentsPage() {
 
     try {
       await uploadDocument(file);
-      // Update status to completed
       setDocuments(prev => prev.map(d => 
         d.id === tempDoc.id ? { ...d, status: "completed" as const } : d
       ));
     } catch (error: any) {
       console.error("Upload error:", error);
       setUploadError(error.message || "Failed to upload document");
-      // Update status to failed
       setDocuments(prev => prev.map(d => 
         d.id === tempDoc.id ? { ...d, status: "failed" as const } : d
       ));
@@ -69,37 +60,41 @@ export default function DocumentsPage() {
     handleFileSelect(e.dataTransfer.files);
   };
 
-  const handleBrowse = () => {
-    fileInputRef.current?.click();
-  };
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Documents</h1>
-        <p className="text-gray-500 mt-1">Processed by Visual Eye Agent (OCR)</p>
+    <div className="px-4 py-6 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="heading-1">Documents</h1>
+        <p className="small-text" style={{ color: 'var(--text-tertiary)' }}>
+          Processed by Visual Eye Agent (OCR)
+        </p>
       </div>
 
       {/* Upload Area */}
-      <Card>
-        <CardContent className="p-8">
+      <Card className="mb-6">
+        <CardContent className="p-6">
           <div
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-2xl p-12 text-center transition-all ${
-              dragOver ? "border-blue-500 bg-blue-50" : "border-gray-300"
+            className={`border-2 border-dashed rounded-[var(--radius-xl)] p-8 sm:p-12 text-center transition-all cursor-pointer ${
+              dragOver 
+                ? "border-[var(--accent-primary)] bg-[var(--accent-light)]" 
+                : "border-[var(--border-default)]"
             } ${uploading ? "opacity-50 pointer-events-none" : ""}`}
+            onClick={() => fileInputRef.current?.click()}
           >
             {uploading ? (
-              <Loader2 className="h-12 w-12 mx-auto text-blue-500 animate-spin mb-4" />
+              <Loader2 className="h-12 w-12 mx-auto animate-spin mb-4" style={{ color: 'var(--accent-primary)' }} />
             ) : (
-              <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+              <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: 'var(--accent-light)' }}>
+                <Upload className="h-8 w-8" style={{ color: 'var(--accent-primary)' }} />
+              </div>
             )}
-            <p className="text-lg font-medium text-gray-900 mb-2">
+            <p className="heading-2 mb-2">
               {uploading ? "Uploading..." : "Drop your documents here"}
             </p>
-            <p className="text-gray-500 mb-4">
+            <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
               Supports PDF, PNG, JPG • Invoices, POs, Bank Statements
             </p>
             <input
@@ -109,34 +104,41 @@ export default function DocumentsPage() {
               onChange={(e) => handleFileSelect(e.target.files)}
               className="hidden"
             />
-            <Button onClick={handleBrowse} disabled={uploading}>
-              Browse Files
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button disabled={uploading}>
+                <ImageIcon className="w-5 h-5" />
+                Browse Files
+              </Button>
+              <Button variant="secondary" disabled={uploading}>
+                <Camera className="w-5 h-5" />
+                Take Photo
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Error Message */}
       {uploadError && (
-        <Card className="bg-red-50 border-red-200">
+        <Card className="mb-6" style={{ background: 'var(--loss-light)', borderColor: 'var(--loss-red)' }}>
           <CardContent className="p-4 flex items-center gap-3">
-            <AlertTriangle className="h-5 w-5 text-red-500" />
+            <AlertTriangle className="h-5 w-5 flex-shrink-0" style={{ color: 'var(--loss-red)' }} />
             <div>
-              <p className="font-medium text-red-700">Upload Failed</p>
-              <p className="text-sm text-red-600">{uploadError}</p>
+              <p className="font-medium" style={{ color: 'var(--loss-red)' }}>Upload Failed</p>
+              <p className="small-text" style={{ color: 'var(--loss-red)' }}>{uploadError}</p>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Backend API Note */}
-      <Card className="bg-amber-50 border-amber-200">
+      {/* Backend Note */}
+      <Card className="mb-6" style={{ background: 'var(--pending-light)', borderColor: 'var(--pending-amber)' }}>
         <CardContent className="p-4 flex items-center gap-3">
-          <AlertTriangle className="h-5 w-5 text-amber-500" />
+          <AlertTriangle className="h-5 w-5 flex-shrink-0" style={{ color: 'var(--pending-amber)' }} />
           <div>
-            <p className="font-medium text-amber-700">Backend Required</p>
-            <p className="text-sm text-amber-600">
-              Document OCR processing requires the AWS Lambda backend. Make sure NEXT_PUBLIC_API_URL is configured.
+            <p className="font-medium" style={{ color: 'var(--pending-amber)' }}>Backend Required</p>
+            <p className="small-text">
+              Document OCR processing requires the AWS Lambda backend with Google Gemini.
             </p>
           </div>
         </CardContent>
@@ -148,29 +150,25 @@ export default function DocumentsPage() {
           <CardHeader>
             <CardTitle>Uploaded Documents</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {documents.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="flex items-center justify-between p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-blue-100 rounded-xl">
-                      <FileText className="h-6 w-6 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{doc.name}</p>
-                      <p className="text-sm text-gray-500">{doc.type} • {doc.date}</p>
-                    </div>
+          <CardContent className="p-0">
+            {documents.map((doc, index) => (
+              <div
+                key={doc.id}
+                className="flex items-center justify-between px-5 py-4 transition-colors hover:bg-[var(--bg-accent-subtle)]"
+                style={{ borderBottom: index < documents.length - 1 ? '1px solid var(--border-subtle)' : 'none' }}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl" style={{ background: 'var(--info-light)' }}>
+                    <FileText className="h-6 w-6" style={{ color: 'var(--info-blue)' }} />
                   </div>
-                  <div className="flex items-center gap-2">
-                    {statusIcons[doc.status]}
-                    <span className="text-sm text-gray-500 capitalize">{doc.status}</span>
+                  <div>
+                    <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{doc.name}</p>
+                    <p className="small-text">{doc.type} • {doc.date}</p>
                   </div>
                 </div>
-              ))}
-            </div>
+                <StatusBadge status={doc.status === "completed" ? "paid" : doc.status === "failed" ? "failed" : "processing"} />
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}
@@ -178,10 +176,12 @@ export default function DocumentsPage() {
       {/* Empty State */}
       {documents.length === 0 && (
         <Card>
-          <CardContent className="p-12 text-center">
-            <FileText className="h-16 w-16 mx-auto text-gray-300 mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">No documents uploaded</h2>
-            <p className="text-gray-500">Upload invoices, POs, or bank statements to extract data automatically.</p>
+          <CardContent className="empty-state">
+            <FileText className="empty-state-icon" />
+            <h2 className="empty-state-title">No documents uploaded</h2>
+            <p className="empty-state-description">
+              Upload invoices, POs, or bank statements to extract data automatically with AI.
+            </p>
           </CardContent>
         </Card>
       )}

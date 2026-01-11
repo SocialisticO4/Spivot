@@ -1,20 +1,17 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Noto_Sans } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const notoSans = Noto_Sans({
+  variable: "--font-noto-sans",
+  subsets: ["latin", "devanagari"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Spivot - Agentic OS for MSMEs",
-  description: "AI-powered multi-agent system for managing Demand, Inventory, Liquidity, and Credit",
+  title: "Spivot - Digital Khata for MSMEs",
+  description: "Agentic Operating System for MSMEs - AI-powered Demand, Inventory, Liquidity, and Credit Management",
   manifest: "/manifest.json",
   icons: {
     icon: "/favicon.ico",
@@ -23,10 +20,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#6366f1",
+  themeColor: "#c45500",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
@@ -36,8 +34,25 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var theme = localStorage.getItem('theme-preference');
+                  if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen`}
+        className={`${notoSans.variable} antialiased bg-page min-h-screen`}
+        style={{ fontFamily: "var(--font-noto-sans), var(--font-sans)" }}
         suppressHydrationWarning
       >
         {children}

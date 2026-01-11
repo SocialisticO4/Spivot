@@ -32,7 +32,7 @@ export function ForecastChart({ data, title = "Demand Forecast vs Actuals" }: Fo
   }));
 
   return (
-    <Card variant="elevated" className="col-span-2">
+    <Card className="col-span-2">
       <CardHeader>
         <CardTitle className="text-lg">{title}</CardTitle>
       </CardHeader>

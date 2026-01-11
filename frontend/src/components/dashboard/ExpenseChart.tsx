@@ -47,7 +47,7 @@ export function ExpenseChart({ data, title = "Monthly Expenses by Category" }: E
     }));
 
   return (
-    <Card variant="elevated">
+    <Card>
       <CardHeader>
         <CardTitle className="text-lg">{title}</CardTitle>
       </CardHeader>

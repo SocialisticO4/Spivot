@@ -1,94 +1,113 @@
-"use client";
-
 import * as React from "react";
-import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-const cardVariants = cva(
-  "rounded-xl border bg-white shadow-sm transition-all duration-200",
-  {
-    variants: {
-      variant: {
-        default: "border-gray-200 hover:shadow-md",
-        elevated: "border-gray-100 shadow-lg hover:shadow-xl",
-        outline: "border-gray-300 shadow-none",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  }
-);
-
-export interface CardProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof cardVariants> {}
-
-const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, variant, ...props }, ref) => (
+function Card({ className, ...props }: React.ComponentProps<"div">) {
+  return (
     <div
-      ref={ref}
-      className={cn(cardVariants({ variant }), className)}
+      data-slot="card"
+      className={cn(
+        "bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-[var(--radius-lg)] text-[var(--text-primary)] overflow-hidden",
+        className
+      )}
       {...props}
     />
-  )
-);
-Card.displayName = "Card";
+  );
+}
 
-const CardHeader = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-6", className)}
-    {...props}
-  />
-));
-CardHeader.displayName = "CardHeader";
+function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-header"
+      className={cn(
+        "flex flex-col gap-1.5 p-5 border-b border-[var(--border-subtle)]",
+        className
+      )}
+      {...props}
+    />
+  );
+}
 
-const CardTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => (
-  <h3
-    ref={ref}
-    className={cn("font-semibold leading-none tracking-tight text-gray-900", className)}
-    {...props}
-  />
-));
-CardTitle.displayName = "CardTitle";
+function CardTitle({ className, ...props }: React.ComponentProps<"h3">) {
+  return (
+    <h3
+      data-slot="card-title"
+      className={cn(
+        "text-lg font-semibold leading-tight text-[var(--text-primary)]",
+        className
+      )}
+      {...props}
+    />
+  );
+}
 
-const CardDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
-  <p
-    ref={ref}
-    className={cn("text-sm text-gray-500", className)}
-    {...props}
-  />
-));
-CardDescription.displayName = "CardDescription";
+function CardDescription({ className, ...props }: React.ComponentProps<"p">) {
+  return (
+    <p
+      data-slot="card-description"
+      className={cn("text-sm text-[var(--text-secondary)]", className)}
+      {...props}
+    />
+  );
+}
 
-const CardContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
-));
-CardContent.displayName = "CardContent";
+function CardContent({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-content"
+      className={cn("p-5", className)}
+      {...props}
+    />
+  );
+}
 
-const CardFooter = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex items-center p-6 pt-0", className)}
-    {...props}
-  />
-));
-CardFooter.displayName = "CardFooter";
+function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-footer"
+      className={cn(
+        "flex items-center gap-3 p-5 pt-0 border-t border-[var(--border-subtle)]",
+        className
+      )}
+      {...props}
+    />
+  );
+}
 
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent };
+// Metric Card for dashboard
+function MetricCard({
+  className,
+  variant = "default",
+  ...props
+}: React.ComponentProps<"div"> & {
+  variant?: "default" | "accent" | "success" | "danger" | "warning";
+}) {
+  const variantStyles = {
+    default: "",
+    accent: "bg-[var(--accent-primary)] text-white border-transparent",
+    success: "bg-[var(--profit-light)] border-[var(--profit-green)]",
+    danger: "bg-[var(--loss-light)] border-[var(--loss-red)]",
+    warning: "bg-[var(--pending-light)] border-[var(--pending-amber)]",
+  };
+
+  return (
+    <div
+      data-slot="metric-card"
+      className={cn(
+        "bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-[var(--radius-lg)] p-5",
+        variantStyles[variant],
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+export {
+  Card,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  MetricCard,
+};

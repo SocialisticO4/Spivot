@@ -64,7 +64,7 @@ export function ActionFeed({ logs, className }: ActionFeedProps) {
   };
 
   return (
-    <Card variant="elevated" className={cn("", className)}>
+    <Card className={cn("", className)}>
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <span className="relative flex h-3 w-3">

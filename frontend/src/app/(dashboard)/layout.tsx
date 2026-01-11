@@ -10,12 +10,10 @@ export default function DashboardLayout({
 }) {
   return (
     <AuthProvider>
-      <div className="bg-gray-50 min-h-screen">
+      <div className="min-h-screen" style={{ background: 'var(--bg-page)' }}>
         <Sidebar />
-        <main className="lg:pl-64 min-h-screen transition-all duration-300">
-          <div className="p-6 lg:p-8 pt-16 lg:pt-8">
-            {children}
-          </div>
+        <main className="main-content pt-14 lg:pt-0">
+          {children}
         </main>
       </div>
     </AuthProvider>
